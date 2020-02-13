@@ -1,0 +1,4 @@
+bin/
+tmp/
+obj/
+.DS_Store
