@@ -17,7 +17,7 @@ typedef struct BeatList {
 } BeatList_t;
 
 typedef struct BassVariables {
-    double last_averages_high[2];
+    double last_averages_high[2]; // {n-1, n-2}
     double last_maximums_high[2];
     double last_averages_low[2];
     double last_maximums_low[2];
