@@ -8,5 +8,7 @@ Run `make` in `ctaff/` subfolder.
 Run `ctaff/bin/ctaff -i "<INPUT FILEPATH> -o <OUTPUT FILEPATH>"` or `ctaff/bin/ctaff` if a raw PCM file is already in `tmp/tmp.raw`. The PCM file must be in mono 32-bit float little-endian format.
 
 ### Dependencies
-[KISS FFT](https://github.com/mborgerding/kissfft)
-- Required files are included in `lib/kissfft`
+- [KISS FFT](https://github.com/mborgerding/kissfft)
+	- Required files are included in `lib/kissfft`
+- [FFmpeg](https://www.ffmpeg.org/)
+	- Not strictly required, but needed for automatic audio conversion

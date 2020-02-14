@@ -187,15 +187,15 @@ int main(int argc, char *argv[]) {
             switch (opt) {
                 case 'i':
                     {
-                        int buffer_size = 52+201; // 52 chars for command + 201 chars for filepath
+                    int buffer_size = 52+201; // 52 chars for command + 201 chars for filepath
 
-                        char command_buffer[buffer_size]; 
-                        int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%1$s\" -y -ac 1 -f f32le -ar 44100 tmp%2$stmp.raw", optarg, kPathSeparator);
-                        if (make_command < 0 || make_command >= buffer_size) {
-                            printf("Error: Can't decode filename. Remove non-ascii characters and ensure the file path is at most 200 characters long.");
-                            return 1;
-                        }
-                        system(command_buffer);
+                    char command_buffer[buffer_size]; 
+                    int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%1$s\" -y -ac 1 -f f32le -ar 44100 tmp%2$stmp.raw", optarg, kPathSeparator);
+                    if (make_command < 0 || make_command >= buffer_size) {
+                        printf("Error: Can't decode filename. Remove non-ascii characters and ensure the file path is at most 200 characters long.");
+                        return 1;
+                    }
+                    system(command_buffer);
                     }
                     break;
                 case 'o':
