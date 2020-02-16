@@ -84,20 +84,26 @@ bool detect_beat(double average, double maximum, double average_increase_ratios[
 
 void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables_t *bass_variables) {
     bool detected = false;
-    // if (time > 62 && time < 63)
-    // printf("******************* %f seconds *******************\n", time);
-    // do higher frequencies
     double average = 0, maximum = 0;
+    // if (time > 84 && time < 85)
+    // printf("******************* %f seconds *******************\n", time);
+    // for (int i = 100; i < 1024; i+=20) {
+    //     double magnitude = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
+    //     if (time > 84 && time < 85)
+    //     printf("%f | %f\n", i*44100/2048., magnitude);
+    // }
+
+    // do higher frequencies
     for (int i = 0; i < 11; i++) {
         double magnitude = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
-        // if (time > 62 && time < 63)
+        // if (time > 84 && time < 85)
         // printf("%f | %f\n", i*44100/2048., magnitude);
         average += magnitude;
         if (magnitude > maximum)
             maximum = magnitude;
     }
     average /= 11.;
-    // if (time > 62 && time < 63)
+    // if (time > 84 && time < 85)
     // printf("MAXIMUM: %f\nAVERAGE: %f\n", maximum, average);
     double average_increase_ratios[2] = {average / bass_variables->last_averages_high[0], average / bass_variables->last_averages_high[1]},
            maximum_increase_ratios[2] = {maximum / bass_variables->last_maximums_high[0], maximum / bass_variables->last_maximums_high[1]};
@@ -109,11 +115,10 @@ void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables
             detected = true;
         }
     }
-    else if (beats->tail->layer == 'A' && (average_increase_ratios[0] > 1.1 || maximum_increase_ratios[0] > 1.1) && 
-                                          (average_increase_ratios[1] > 1.1 || maximum_increase_ratios[1] > 1.1)) {
+    else if (beats->tail->layer == 'A' && average_increase_ratios[0] + maximum_increase_ratios[0] > 2.1 && average_increase_ratios[1] + maximum_increase_ratios[1] > 2.1) {
         beats->tail->time = (beats->tail->time + time) / 2.;
         beats->tail->layer = 'C';
-        detected = true;
+        bass_variables->last_was_detected[0] = true;
     }
 
     bass_variables->last_averages_high[1] = bass_variables->last_averages_high[0];
@@ -145,7 +150,7 @@ void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables
         else if (bass_variables->last_was_detected[0] && average_increase_ratios[0] > 1.1 && maximum_increase_ratios[0] > 1.1) {
             beats->tail->time = (beats->tail->time + time) / 2.;
             beats->tail->layer = 'D';
-            detected = true;
+            // detected = true;
         }
     }
     // if (!detected && !bass_variables->last_was_detected[0] && !bass_variables->last_was_detected[1]) {
@@ -176,29 +181,29 @@ void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables
 }
 
 int main(int argc, char *argv[]) {
-    FILE *label_ptr = label_ptr = fopen("tmp/_labels.txt", "w+");
+    FILE *label_ptr = fopen("tmp/_labels.txt", "w+");
+    FILE *file_ptr = NULL;
     const float PI = 3.1415927;
 
     if (argc > 1) {
-        system("mkdir -p tmp");
-
         int opt;
         while ((opt = getopt(argc, argv, "i:o:")) != -1) {
             switch (opt) {
                 case 'i':
                     {
-                    int buffer_size = 52+201; // 52 chars for command + 201 chars for filepath
+                    int buffer_size = 70+251; // 70 chars for command + 251 chars for filepath
 
                     char command_buffer[buffer_size]; 
-                    int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%1$s\" -y -ac 1 -f f32le -ar 44100 tmp%2$stmp.raw", optarg, kPathSeparator);
+                    int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel panic -y -ac 1 -f f32le -ar 44100 -", optarg);
                     if (make_command < 0 || make_command >= buffer_size) {
-                        printf("Error: Can't decode filename. Remove non-ascii characters and ensure the file path is at most 200 characters long.");
+                        printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.");
                         return 1;
                     }
-                    system(command_buffer);
+                    file_ptr = popen(command_buffer, "r");
                     }
                     break;
                 case 'o':
+                    system("mkdir -p tmp");
                     label_ptr = fopen(optarg, "w+");
                     if (label_ptr == NULL) {
                         printf("Error: output file can't be opened. Defaulting to tmp/_labels.txt");
@@ -208,15 +213,8 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
-
-    FILE *file_ptr;
-
-    char raw_filepath[12] = "tmp";
-    file_ptr = fopen(strcat(strcat(raw_filepath, kPathSeparator), "tmp.raw"), "rb"); // tmp/tmp.raw
-
-    if (file_ptr == NULL) {
-        printf("Error: no file specified or file can't be opened.");
+    else {
+        printf("Error: no input file specified.");
         return 1;
     }
     
@@ -270,13 +268,6 @@ int main(int argc, char *argv[]) {
     }
     free(beats);
     kiss_fftr_free(fwd);
-    
-    // Remove later
-    char remove_tmp_command[15] = "rm ";
-    system(strcat(remove_tmp_command, raw_filepath));
-
-    // if (argc > 1)
-    //     system('rm -r tmp')
 
     return 0;
 }
