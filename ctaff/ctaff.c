@@ -82,35 +82,40 @@ bool detect_beat(double average, double maximum, double average_increase_ratios[
 
 }
 
-void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables_t *bass_variables) {
+void detect_bass(double *out, BeatList_t *beats, float time, BassVariables_t *bass_variables) {
     bool detected = false;
-    double average = 0, maximum = 0;
-    // if (time > 84 && time < 85)
-    // printf("******************* %f seconds *******************\n", time);
-    // for (int i = 100; i < 1024; i+=20) {
-    //     double magnitude = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
-    //     if (time > 84 && time < 85)
-    //     printf("%f | %f\n", i*44100/2048., magnitude);
-    // }
+    double average = 0, maximum = 0, maximum_average = 0;
+    int maximum_index = 1;
+    if (time >= 17 && time <= 20)
+    printf("******************* %f seconds *******************\n", time);
+    //     for (int i = 100; i < 1024; i+=20) {
+    //         double magnitude = out[i];
+    //         if (time > 84 && time < 85)
+    //         printf("%f | %f\n", i*44100/2048., magnitude);
+    //     }
+    // 
 
     // do higher frequencies
     for (int i = 0; i < 11; i++) {
-        double magnitude = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
-        // if (time > 84 && time < 85)
-        // printf("%f | %f\n", i*44100/2048., magnitude);
+        double magnitude = out[i];
+        if (time >= 17 && time <= 20)
+        printf("%f | %f\n", i*44100/2048., magnitude);
         average += magnitude;
-        if (magnitude > maximum)
-            maximum = magnitude;
+        if (magnitude > maximum) {
+        	maximum = magnitude;
+        	maximum_index = i;
+        }
     }
+    maximum_average = (out[maximum_index + (maximum_index == 0 || out[maximum_index + 1] > out[maximum_index - 1] ? 1 : -1)] + maximum) / 2;
     average /= 11.;
     // if (time > 84 && time < 85)
     // printf("MAXIMUM: %f\nAVERAGE: %f\n", maximum, average);
     double average_increase_ratios[2] = {average / bass_variables->last_averages_high[0], average / bass_variables->last_averages_high[1]},
-           maximum_increase_ratios[2] = {maximum / bass_variables->last_maximums_high[0], maximum / bass_variables->last_maximums_high[1]};
+           maximum_increase_ratios[2] = {maximum_average / bass_variables->last_maximums_high[0], maximum_average / bass_variables->last_maximums_high[1]};
 
     
     if (!bass_variables->last_was_detected[0] && !bass_variables->last_was_detected[1]) {
-        if (detect_beat(average, maximum, average_increase_ratios, maximum_increase_ratios)) {
+        if (detect_beat(average, maximum_average, average_increase_ratios, maximum_increase_ratios)) {
             add_beat(beats, time, 'A');
             detected = true;
         }
@@ -128,21 +133,24 @@ void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables
 
     // do lower frequencies
 
-    average = 0, maximum = 0;
+    average = 0, maximum = 0, maximum_index = 1, maximum_average = 0;
     for (int i = 0; i < 6; i++) {
-        double magnitude = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
+        double magnitude = out[i];
         // printf("%f | %f\n", i*44100/(float)nfft, magnitude);
         average += magnitude;
-        if (magnitude > maximum)
-            maximum = magnitude;
+        if (magnitude > maximum) {
+        	maximum = magnitude;
+        	maximum_index = i;
+        }
     }
+    maximum_average = (out[maximum_index + (maximum_index == 0 || out[maximum_index + 1] > out[maximum_index - 1] ? 1 : -1)] + maximum) / 2;
     average /= 6.;
     average_increase_ratios[0] = average / bass_variables->last_averages_low[0];
     average_increase_ratios[1] = average / bass_variables->last_averages_low[1];
-    maximum_increase_ratios[0] = maximum / bass_variables->last_maximums_low[0];
+    maximum_increase_ratios[0] = maximum_average / bass_variables->last_maximums_low[0];
     maximum_increase_ratios[1] = maximum / bass_variables->last_maximums_low[1];
 
-    if (detect_beat(average, maximum, average_increase_ratios, maximum_increase_ratios)) {
+    if (detect_beat(average, maximum_average, average_increase_ratios, maximum_increase_ratios)) {
         if (!detected && !bass_variables->last_was_detected[0] && !bass_variables->last_was_detected[1]) {
             add_beat(beats, time, 'B');
             detected = true;
@@ -181,9 +189,11 @@ void detect_bass(kiss_fft_cpx *out, BeatList_t *beats, float time, BassVariables
 }
 
 int main(int argc, char *argv[]) {
+    const float PI = 3.1415927;
+
+    system("mkdir -p tmp");
     FILE *label_ptr = fopen("tmp/_labels.txt", "w+");
     FILE *file_ptr = NULL;
-    const float PI = 3.1415927;
 
     if (argc > 1) {
         int opt;
@@ -191,22 +201,21 @@ int main(int argc, char *argv[]) {
             switch (opt) {
                 case 'i':
                     {
-                    int buffer_size = 70+251; // 70 chars for command + 251 chars for filepath
+                        int buffer_size = 70+251; // 70 chars for command + 251 chars for filepath
 
-                    char command_buffer[buffer_size]; 
-                    int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel panic -y -ac 1 -f f32le -ar 44100 -", optarg);
-                    if (make_command < 0 || make_command >= buffer_size) {
-                        printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.");
-                        return 1;
-                    }
-                    file_ptr = popen(command_buffer, "r");
+                        char command_buffer[buffer_size]; 
+                        int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel error -y -ac 1 -f f32le -ar 44100 -", optarg);
+                        if (make_command < 0 || make_command >= buffer_size) {
+                            printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.\n");
+                            return 1;
+                        }
+                        file_ptr = popen(command_buffer, "r");
                     }
                     break;
                 case 'o':
-                    system("mkdir -p tmp");
                     label_ptr = fopen(optarg, "w+");
                     if (label_ptr == NULL) {
-                        printf("Error: output file can't be opened. Defaulting to tmp/_labels.txt");
+                        printf("Error: output file can't be opened. Defaulting to tmp/_labels.txt\n");
                         label_ptr = fopen("tmp/_labels.txt", "w+");
                     }
                     break;
@@ -214,9 +223,18 @@ int main(int argc, char *argv[]) {
         }
     }
     else {
-        printf("Error: no input file specified.");
+        printf("Error: no input file specified.\n");
         return 1;
     }
+
+    // ensure decoding created output
+    int c = fgetc(file_ptr);
+    if (c == EOF) {
+    	printf("Error: couldn't open the input file.\n");
+    	return 1;
+    }
+    else
+    	ungetc(c, file_ptr);
     
     float sample;
     const int nfft = 2048;
@@ -239,6 +257,7 @@ int main(int argc, char *argv[]) {
     memset(bass_variables->last_was_detected, false, sizeof(bass_variables->last_was_detected));
 
     int frame = 0;
+    double magnitudes[nfft / 2];
 
     while (1) {
         for (int i = 0; i < nfft; i++) {
@@ -251,17 +270,19 @@ int main(int argc, char *argv[]) {
         if (feof(file_ptr)) 
             break;
 
-        // if (frame == 1500) break;
         kiss_fftr(fwd, &in[0], &out[0]);
 
+        // for (int i = 0; i <= nfft / 2; i++) // full spectrum
+        for (int i = 0; i < 20; i++) // only frequencies needed for now
+        	magnitudes[i] = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
+
         float time = (frame + 0.5) * nfft / 44100.;
-        detect_bass(&out[0], beats, time, bass_variables);
+        detect_bass(&magnitudes[0], beats, time, bass_variables);
 
         frame++;
     }
     for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next) {
-        // printf("%f %d\n", current_node->time, current_node->average);
-        fprintf(label_ptr, "%f\t%f\t%c\n", current_node->time, current_node->time, current_node->layer);
+        fprintf(label_ptr, "%f\t%f\t%c\n", current_node->time - .05, current_node->time + .05, current_node->layer);
     }
     for (BeatNode_t *current_node = beats->head; current_node != NULL; current_node = current_node->next) {
         free(current_node);
