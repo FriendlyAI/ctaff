@@ -48,10 +48,10 @@ void add_beat(BeatList_t *beats, float time, char layer) {
 }
 
 bool detect_beat(double average, double maximum, double increase, int increase_count, double average_increase_ratios[2], double maximum_increase_ratios[2], BassVariables_t *bass_variables) {
-    // TODO : average > some preprocess of whole song, or relative
+    // TODO : average > some preprocess of whole song, or relative, preprocess chunks of ~5 sec to find average for chunk
     // TODO : lower average and maximum requirements and raise relative requirements
     // maybe lower last maximums requirement with higher increases
-    if (average > 75 && maximum > 150 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
+    if (average > 65 && maximum > 140 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
         return true;
 
     return false;
@@ -59,11 +59,12 @@ bool detect_beat(double average, double maximum, double increase, int increase_c
 }
 
 void detect_bass(double *out, BeatList_t *beats, float time, BassVariables_t *bass_variables) {
+    // TODO: change variable names to make it more clear
     bool detected = false;
     double average = 1, increase = 1, maximum = 1, maximum_average = 0;
     int increase_count = 0, maximum_index = 0;
 
-    float start_time = 336.0, end_time = 339.4;
+    float start_time = 0, end_time = -1;
 
     for (int i = 1; i <= 8; i++) {
         double magnitude = out[i];
@@ -106,7 +107,7 @@ void detect_bass(double *out, BeatList_t *beats, float time, BassVariables_t *ba
         (increase / bass_variables->last_averages[0] > bass_variables->last_total_increases[0] / bass_variables->last_averages[1] || 
          increase / bass_variables->last_maximums[0] > bass_variables->last_total_increases[0] / bass_variables->last_maximums[1])) {
         
-        beats->tail->time = (beats->tail->time + time) / 2;
+        beats->tail->time += FRAME_TIME / 2; // maybe change frame time by how confident override is
         beats->tail->layer = 'C';
         detected = true;
     }
