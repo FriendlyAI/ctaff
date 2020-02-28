@@ -2,7 +2,7 @@
 An automated beat mapper and rhythm game map generator written in pure C.
 
 ### Setup
-Run `make` in `ctaff/` subfolder.
+Run `make` in `src/` subfolder.
 
 ### Usage
 Run `bin/ctaff -i "<INPUT FILEPATH>" -o "<OUTPUT FILEPATH>"`.

@@ -1,7 +1,7 @@
 CC = clang
-CFLAGS = -Wall -O2
+CFLAGS = -O2
 
-OBJDIR=obj
+OBJDIR = obj
 OFILES = ${OBJDIR}/ctaff.o ${OBJDIR}/kiss_fft.o ${OBJDIR}/kiss_fftr.o
 
 SRCFILES = ctaff.c lib/kissfft/kiss_fft.c lib/kissfft/kiss_fftr.c
