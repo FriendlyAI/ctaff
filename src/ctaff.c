@@ -8,7 +8,7 @@
 
 #define PI 3.1415927
 #define FRAME_SIZE 2048
-#define FRAME_TIME 0.04644
+#define FRAME_TIME 0.04644 // 2048 / 44100
 
 typedef struct BeatNode {
     struct BeatNode *next;
@@ -49,11 +49,11 @@ void add_beat(BeatList_t *beats, float time, char layer) {
 
 bool detect_beat(double running_average, double average, double maximum, double increase, int increase_count, double average_increase_ratios[2], double maximum_increase_ratios[2], BassVariables_t *bass_variables) {
     if (running_average >= 100) {
-        if (((average > 70 && increase > 350) || average > 80) && maximum > 150 && increase > 250 && increase / bass_variables->last_maximums[0] > 1.4 && increase > bass_variables->last_total_increases[0] * .6)
+        if (((average > 70 && increase > 350) || average > 80) && maximum > 150 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.4 && increase > bass_variables->last_total_increases[0] * .6)
             return true;
     }
     else if (running_average >= 80) {
-        if (((average > 65 && increase > 350) || average > 75) && maximum > 140 && increase > 225 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
+        if (((average > 65 && increase > 350) || average > 75) && maximum > 140 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
             return true;
     }
     else if (running_average >= 60) {
@@ -82,7 +82,7 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
     double increase = 1, maximum_average = 1;
     int increase_count = 0, maximum_index = 0;
 
-    float start_time = 89.8, end_time = 90.1;
+    float start_time = 0, end_time = -1;
 
     for (int i = 1; i <= 8; i++) {
         double magnitude = out[i];
@@ -93,15 +93,14 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
             increase += max_increase;
             increase_count++;
         }
-        double magnitude_average = (out[i + (i != 8 && out[i + 1] > out[i - 1] ? 1 : -1)] + magnitude) / 2;
-        if (magnitude_average > maximum_average) {
+        double magnitude_average = (out[i + 1] + magnitude) / 2;
+        if (magnitude_average > maximum_average && i != 8) {
             maximum_average = magnitude_average;
             maximum_index = i;
         }
         bass_variables->last_frequencies[i - 1] = magnitude;
         bass_variables->last_increases[i - 1] = freq_increase;
     }
-
 
     double average_increase_ratios[2] = {average / bass_variables->last_averages[0], average / bass_variables->last_averages[1]},
            maximum_increase_ratios[2] = {maximum_average / bass_variables->last_maximums[0], maximum_average / bass_variables->last_maximums[1]};
@@ -126,19 +125,16 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
         beats->tail->layer = 'C';
         detected = true;
     }
-    else if (detect_beat(running_average, average, maximum_average, increase, increase_count, average_increase_ratios, maximum_increase_ratios, bass_variables)) {
-        if (!bass_variables->last_was_detected[0] && !bass_variables->last_was_detected[1]) {
+    else if (!bass_variables->last_was_detected[0] && detect_beat(running_average, average, maximum_average, increase, increase_count, average_increase_ratios, maximum_increase_ratios, bass_variables)) {
+        if (!bass_variables->last_was_detected[1]) {
             add_beat(beats, time, 'A');
             detected = true;
-            // printf("DETECTED\n");
         }
-        else if (!bass_variables->last_was_detected[0] && bass_variables->last_was_detected[1] && average > 100 && 
-                 (increase / bass_variables->last_maximums[0] > bass_variables->last_total_increases[0] / bass_variables->last_maximums[1] ||
-                  increase / bass_variables->last_maximums[0] > 5)) {
+        else if (average > 100 && (increase / bass_variables->last_maximums[0] > bass_variables->last_total_increases[0] / bass_variables->last_maximums[1] ||
+                                   increase / bass_variables->last_maximums[0] > 5)) {
 
             add_beat(beats, time + FRAME_TIME / 2, 'B');
             detected = true;
-            // printf("DETECTED\n");
         }
     }
 
@@ -244,7 +240,7 @@ int main(int argc, char *argv[]) {
         double frame_average = 1;
 
         // for (int i = 0; i <= FRAME_SIZE / 2; i++) // full spectrum
-        for (int i = 1; i <= 8; i++) { // only frequencies needed for now
+        for (int i = 1; i <= 9; i++) { // only frequencies needed for now
             magnitudes[i] = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
             frame_average += magnitudes[i];
         }
@@ -260,13 +256,17 @@ int main(int argc, char *argv[]) {
 
         frame++;
     }
-    for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next) {
+
+    for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next)
         fprintf(label_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
-    }
-    for (BeatNode_t *current_node = beats->head; current_node != NULL; current_node = current_node->next) {
+
+    // Free memory
+
+    for (BeatNode_t *current_node = beats->head; current_node != NULL; current_node = current_node->next)
         free(current_node);
-    }
+
     free(beats);
+    free(bass_variables)
     kiss_fftr_free(fwd);
 
     return 0;
