@@ -49,15 +49,15 @@ void add_beat(BeatList_t *beats, float time, char layer) {
 
 bool detect_beat(double running_average, double average, double maximum, double increase, int increase_count, double average_increase_ratios[2], double maximum_increase_ratios[2], BassVariables_t *bass_variables) {
     if (running_average >= 100) {
-        if (((average > 70 && increase > 350) || average > 80) && maximum > 150 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.4 && increase > bass_variables->last_total_increases[0] * .6)
+        if (((average > 70 && increase > 350) || average > 80) && maximum > 155 && increase > 250 && increase / bass_variables->last_maximums[0] > 1.4 && increase > bass_variables->last_total_increases[0] * .6)
             return true;
     }
     else if (running_average >= 80) {
-        if (((average > 65 && increase > 350) || average > 75) && maximum > 140 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
+        if (((average > 65 && increase > 350) || average > 75) && maximum > 145 && increase > 250 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
             return true;
     }
     else if (running_average >= 60) {
-	    if (((average > 60 && increase > 350) || average > 70) && maximum > 130 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
+	    if (((average > 60 && increase > 350) || average > 70) && maximum > 130 && increase > 225 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
 	        return true;
     }
     else if (running_average >= 50) {
@@ -65,11 +65,11 @@ bool detect_beat(double running_average, double average, double maximum, double 
             return true;
     }
     else if (running_average >= 40) {
-    	if (average > 55 && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
+    	if (average > 60 && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
         	return true;
     }
     else {//average > 50 or 45
-	    if (average > 45 && maximum > 75 && increase > 75 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
+	    if (average > 55 && maximum > 75 && increase > 100 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
 	        return true;
     }
 
@@ -82,7 +82,7 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
     double increase = 1, maximum_average = 1;
     int increase_count = 0, maximum_index = 0;
 
-    float start_time = 0, end_time = -1;
+    float start_time = 1, end_time = 0;
 
     for (int i = 1; i <= 8; i++) {
         double magnitude = out[i];
@@ -155,8 +155,11 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
 
 int main(int argc, char *argv[]) {
     system("mkdir -p tmp");
-    FILE *label_ptr = fopen("tmp/_labels.txt", "w+");
-    FILE *file_ptr = NULL;
+    char output_filepath[16] = "tmp";
+    strcat(strcat(output_filepath, kPathSeparator), "out.txt");
+    FILE *output_ptr = fopen(output_filepath, "w+");
+
+    FILE *song_file_ptr = NULL;
 
     if (argc > 1) {
         int opt;
@@ -172,14 +175,14 @@ int main(int argc, char *argv[]) {
                             printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.\n");
                             return 1;
                         }
-                        file_ptr = popen(command_buffer, "r");
+                        song_file_ptr = popen(command_buffer, "r");
                     }
                     break;
                 case 'o':
-                    label_ptr = fopen(optarg, "w+");
-                    if (label_ptr == NULL) {
-                        printf("Error: output file can't be opened. Defaulting to tmp/_labels.txt\n");
-                        label_ptr = fopen("tmp/_labels.txt", "w+");
+                    output_ptr = fopen(optarg, "w+");
+                    if (output_ptr == NULL) {
+                        printf("Error: output file can't be opened. Defaulting to tmp/out.txt\n");
+                        output_ptr = fopen(output_filepath, "w+");
                     }
                     break;
             }
@@ -191,13 +194,13 @@ int main(int argc, char *argv[]) {
     }
 
     // ensure decoding created output
-    int c = fgetc(file_ptr);
+    int c = fgetc(song_file_ptr);
     if (c == EOF) {
         printf("Error: couldn't open the input file.\n");
         return 1;
     }
     else
-        ungetc(c, file_ptr);
+        ungetc(c, song_file_ptr);
     
     float sample;
 
@@ -228,11 +231,11 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < FRAME_SIZE; i++) {
             // hanning window weight
             float window_weight = powf(sinf(PI * i / FRAME_SIZE), 2);
-            fread((void*)(&sample), sizeof(sample), 1, file_ptr);
+            fread((void*)(&sample), sizeof(sample), 1, song_file_ptr);
             in[i] = (kiss_fft_scalar)(sample * window_weight);
         }
 
-        if (feof(file_ptr)) 
+        if (feof(song_file_ptr)) 
             break;
 
         kiss_fftr(fwd, &in[0], &out[0]);
@@ -258,7 +261,7 @@ int main(int argc, char *argv[]) {
     }
 
     for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next)
-        fprintf(label_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
+        fprintf(output_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
 
     // Free memory
 
@@ -266,7 +269,7 @@ int main(int argc, char *argv[]) {
         free(current_node);
 
     free(beats);
-    free(bass_variables)
+    free(bass_variables);
     kiss_fftr_free(fwd);
 
     return 0;
