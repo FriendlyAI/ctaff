@@ -14,3 +14,6 @@ Run `bin/ctaff -i "<INPUT FILEPATH>" -o "<OUTPUT FILEPATH>"`.
 ### Requirements
 - [FFmpeg](https://www.ffmpeg.org/)
 	- Command-line tools required
+
+### Output
+Output is a binary file of beats detected. There are no headers and each beat is 5 bytes: the first byte is an ASCII character representing the layer in which the beat was detected. The next 4 bytes are a little-endian float representing the time, in seconds, of the detection.
