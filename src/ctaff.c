@@ -57,20 +57,20 @@ bool detect_beat(double running_average, double average, double maximum, double 
             return true;
     }
     else if (running_average >= 60) {
-	    if (((average > 60 && increase > 350) || average > 70) && maximum > 130 && increase > 225 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
-	        return true;
+        if (((average > 60 && increase > 350) || average > 70) && maximum > 130 && increase > 225 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
+            return true;
     }
     else if (running_average >= 50) {
         if (average > 65 && maximum > 120 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
             return true;
     }
     else if (running_average >= 40) {
-    	if (average > 60 && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
-        	return true;
+        if (average > 60 && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
+            return true;
     }
     else {//average > 50 or 45
-	    if (average > 55 && maximum > 75 && increase > 100 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
-	        return true;
+        if (average > 55 && maximum > 75 && increase > 100 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
+            return true;
     }
 
     return false;
@@ -155,8 +155,8 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
 
 int main(int argc, char *argv[]) {
     system("mkdir -p tmp");
-    char output_filepath[16] = "tmp";
-    strcat(strcat(output_filepath, kPathSeparator), "out.txt");
+    char output_filepath[14] = "tmp";
+    strcat(strcat(output_filepath, kPathSeparator), "out.track");
     FILE *output_ptr = fopen(output_filepath, "w+");
 
     FILE *song_file_ptr = NULL;
@@ -167,10 +167,10 @@ int main(int argc, char *argv[]) {
             switch (opt) {
                 case 'i':
                     {
-                        int buffer_size = 58+251; // 58 chars for command + 251 chars for filepath
+                        int buffer_size = 55+251; // 55 chars for command + 251 chars for filepath
 
                         char command_buffer[buffer_size]; 
-                        int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel error -y -ac 1 -f f32le -ar 44100 -", optarg);
+                        int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel error -ac 1 -f f32le -ar 44100 -", optarg);
                         if (make_command < 0 || make_command >= buffer_size) {
                             printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.\n");
                             return 1;
@@ -260,8 +260,13 @@ int main(int argc, char *argv[]) {
         frame++;
     }
 
-    for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next)
-        fprintf(output_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
+    // for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next)
+    //     fprintf(output_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
+
+    for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next) {
+        fwrite(&current_node->layer, sizeof(char), 1, output_ptr);
+        fwrite(&current_node->time, sizeof(float), 1, output_ptr);
+    }
 
     // Free memory
 
