@@ -62,15 +62,15 @@ bool detect_beat(double running_average, double average, double maximum, double 
             return true;
     }
     else if (running_average >= 50) {
-        if (average > 65 && maximum > 120 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
+        if (((average > 50 && increase > 300) || average > 65) && maximum > 120 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
             return true;
     }
     else if (running_average >= 40) {
-        if (average > 60 && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
+        if (((average > 45 && increase > 250) || average > 60) && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
             return true;
     }
-    else {//average > 50 or 45
-        if (average > 55 && maximum > 75 && increase > 100 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
+    else {
+        if (((average > 40 && increase > 200) || average > 50) && maximum > 75 && increase > 100 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
             return true;
     }
 
