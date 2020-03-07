@@ -123,21 +123,24 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
         
         if (average > bass_variables->last_averages[0] * 1.1)
             beats->tail->time += FRAME_TIME / 2;
-        beats->tail->layer = 'C';
         detected = true;
     }
     else if (!bass_variables->last_was_detected[0] && detect_beat(running_average, average, maximum_average, increase, increase_count, average_increase_ratios, maximum_increase_ratios, bass_variables)) {
         if (!bass_variables->last_was_detected[1]) {
-            if (bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2)
+            if (bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2) {
                 time -= FRAME_TIME / 2;
-            add_beat(beats, time, 'A');
+                maximum_index = bass_variables->last_maximum_index;
+            }
+            add_beat(beats, time, 'A' + maximum_index / 5);
             detected = true;
         }
         else if (average > 100 && (increase / bass_variables->last_maximums[0] > bass_variables->last_total_increases[0] / bass_variables->last_maximums[1] ||
                                    increase / bass_variables->last_maximums[0] > 5)) {
-            if (time - beats->tail->time >= FRAME_TIME * 2.5 && bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2)
+            if (time - beats->tail->time >= FRAME_TIME * 2.5 && bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2) {
                 time -= FRAME_TIME / 2;
-            add_beat(beats, time, 'B');
+                maximum_index = bass_variables->last_maximum_index;
+            }
+            add_beat(beats, time, 'A' + maximum_index / 5);
             detected = true;
         }
     }
