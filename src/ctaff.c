@@ -131,7 +131,11 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
                 time -= FRAME_TIME / 2;
                 maximum_index = bass_variables->last_maximum_index;
             }
-            add_beat(beats, time, 'A' + maximum_index / 5);
+
+            char layer = 'A' + maximum_index / 5;
+            if (time - beats->tail->time < .15 && beats->tail->layer == layer)
+                layer = layer == 'B' ? 'A' : 'B';
+            add_beat(beats, time, layer);
             detected = true;
         }
         else if (average > 100 && (increase / bass_variables->last_maximums[0] > bass_variables->last_total_increases[0] / bass_variables->last_maximums[1] ||
@@ -140,7 +144,11 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
                 time -= FRAME_TIME / 2;
                 maximum_index = bass_variables->last_maximum_index;
             }
-            add_beat(beats, time, 'A' + maximum_index / 5);
+
+            char layer = 'A' + maximum_index / 5;
+            if (time - beats->tail->time < .15 && beats->tail->layer == layer)
+                layer = layer == 'B' ? 'A' : 'B';
+            add_beat(beats, time, layer);
             detected = true;
         }
     }
@@ -189,7 +197,7 @@ int main(int argc, char *argv[]) {
                 case 'o':
                     output_ptr = fopen(optarg, "w+");
                     if (output_ptr == NULL) {
-                        printf("Error: output file can't be opened. Defaulting to tmp/out.txt\n");
+                        printf("Error: output file can't be opened. Defaulting to tmp/out.track\n");
                         output_ptr = fopen(output_filepath, "w+");
                     }
                     break;
@@ -269,14 +277,14 @@ int main(int argc, char *argv[]) {
         frame++;
     }
 
-    for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next)
-        // fprintf(output_ptr, "%f\t%c\n", current_node->time, current_node->layer);
-        fprintf(output_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
+    // for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next)
+    //     // fprintf(output_ptr, "%f\t%c\n", current_node->time, current_node->layer);
+    //     fprintf(output_ptr, "%f\t%f\t%c\n", current_node->time - FRAME_TIME, current_node->time + FRAME_TIME, current_node->layer);
 
-    // for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next) {
-    //     fwrite(&current_node->layer, sizeof(char), 1, output_ptr);
-    //     fwrite(&current_node->time, sizeof(float), 1, output_ptr);
-    // }
+    for (BeatNode_t *current_node = beats->head->next; current_node != NULL; current_node = current_node->next) {
+        fwrite(&current_node->layer, sizeof(char), 1, output_ptr);
+        fwrite(&current_node->time, sizeof(float), 1, output_ptr);
+    }
 
     // Free memory
 
