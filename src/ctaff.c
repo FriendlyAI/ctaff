@@ -323,13 +323,13 @@ int main(int argc, char *argv[]) {
         for (int i = 1; i <= FRAME_SIZE / 2; i++) { // full spectrum
         // for (int i = 1; i <= 9; i++) { // only frequencies needed for now
             magnitudes[i] = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
-            if (i <= 9)
+            if (i <= 8)
                 bass_frame_average += magnitudes[i];
             else if (i >= 10 && i <= 89)
                 midrange_frame_average += magnitudes[i];
 
         }
-        bass_frame_average /= 9;
+        bass_frame_average /= 8;
         midrange_frame_average /= 80;
 
         float bass_weight = frame < 80 ? frame / 4 + 2 : 50;

@@ -17,3 +17,7 @@ Run `bin/ctaff -i "<INPUT FILEPATH>" -o "<OUTPUT FILEPATH>"`.
 
 ### Output
 Output is a binary file of beats detected. There are no headers and each beat is 5 bytes: the first byte is an ASCII character representing the layer in which the beat was detected. The next 4 bytes are a little-endian float representing the time, in seconds, of the detection.
+
+Layers `A` and `B` are bass beats. `A` is for frequencies peaking around 0-100 Hz, while `B` is for beats peaking around 100-200 Hz.
+
+Layers `C`, `D`, and `E` are midrange beats. `C` is for frequencies peaking around 200-300 Hz, while `E` is for frequencies peaking around 300-2000 Hz. `D` is an overflow layer to spread rapidly successive beats out.
