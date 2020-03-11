@@ -33,6 +33,8 @@ typedef struct BassVariables {
 } BassVariables_t;
 
 typedef struct MidrangeVariables {
+    double last_maximum;
+    double last_total_increase;
     double last_increases[80];
     double last_frequencies[80];
 
@@ -104,7 +106,7 @@ bool detect_midrange_beat(double running_average, double maximum_average, double
     return false;
 }
 
-void detect_bass(double *out, BeatList_t *beats, float time, double average, double running_average, BassVariables_t *bass_variables) {
+bool detect_bass(double *out, BeatList_t *beats, float time, double average, double running_average, BassVariables_t *bass_variables) {
     bool detected = false;
     double increase = 1, maximum_average = 1;
     int increase_count = 0, maximum_index = 0;
@@ -175,14 +177,13 @@ void detect_bass(double *out, BeatList_t *beats, float time, double average, dou
     bass_variables->last_maximum_index = maximum_index;
 
     bass_variables->last_was_detected[1] = bass_variables->last_was_detected[0];
-    
-    if (detected)
-        bass_variables->last_was_detected[0] = true;
-    else
-        bass_variables->last_was_detected[0] = false;
+    bass_variables->last_was_detected[0] = detected;
+
+    return detected;
 }
 
-void detect_midrange(double *out, BeatList_t *beats, float time, double average, double running_average, MidrangeVariables_t *midrange_variables) {
+bool detect_midrange(double *out, BeatList_t *beats, float time, double average, double running_average, MidrangeVariables_t *midrange_variables) {
+    bool detected = false;
     double increase = 1, maximum_average = 1;
     int increase_count = 0, maximum_index = 0;
 
@@ -203,17 +204,27 @@ void detect_midrange(double *out, BeatList_t *beats, float time, double average,
         midrange_variables->last_frequencies[i - 10] = magnitude;
     }
 
-    if (!midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1] && detect_midrange_beat(running_average, maximum_average, increase)) {
-        char layer = 'C' + (maximum_index > 15 ? 2 : 0);
-        if (time - beats->tail->time <= .2 && beats->tail->layer != 'D')
-            layer = 'D';
-        add_beat(beats, time, layer);
-        midrange_variables->last_was_detected[0] = true;
+    if (detect_midrange_beat(running_average, maximum_average, increase)) {
+        if (!midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1]) {
+            char layer = 'C' + (maximum_index > 15 ? 2 : 0);
+            if (time - beats->tail->time <= .2 && beats->tail->layer != 'D')
+                layer = 'D';
+            add_beat(beats, time, layer);
+            detected = true;
+        }
+        else if (midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1] && (increase > midrange_variables->last_total_increase || maximum_average > midrange_variables->last_maximum)) {
+            beats->tail->time = time;
+            detected = true;
+        }
     }
-    else {
-        midrange_variables->last_was_detected[1] = midrange_variables->last_was_detected[0];
-        midrange_variables->last_was_detected[0] = false;
-    }
+    
+    midrange_variables->last_total_increase = increase;
+    midrange_variables->last_maximum = maximum_average;
+
+    midrange_variables->last_was_detected[1] = midrange_variables->last_was_detected[0];
+    midrange_variables->last_was_detected[0] = detected;
+
+    return detected;
 }
 
 int main(int argc, char *argv[]) {
@@ -298,6 +309,8 @@ int main(int argc, char *argv[]) {
     memset(midrange_variables->last_increases, 1, sizeof(midrange_variables->last_increases));
     memset(midrange_variables->last_was_detected, false, sizeof(midrange_variables->last_was_detected));
     memset(midrange_variables->last_frequencies, 1, sizeof(midrange_variables->last_frequencies));
+    midrange_variables->last_total_increase = 1;
+    midrange_variables->last_maximum = 1;
 
     int frame = 0;
     double magnitudes[FRAME_SIZE / 2];
@@ -345,9 +358,16 @@ int main(int argc, char *argv[]) {
 
         float time = (frame + 0.5) * FRAME_SIZE / 44100.;
 
-        detect_bass(&magnitudes[0], bass_beats, time, bass_frame_average, bass_running_average, bass_variables);
-        detect_midrange(&magnitudes[0], midrange_beats, time, midrange_frame_average, midrange_running_average, midrange_variables);
+        if (detect_bass(&magnitudes[0], bass_beats, time, bass_frame_average, bass_running_average, bass_variables) && 
+            bass_beats->tail->time - midrange_beats->tail->time < .09) {
 
+            midrange_beats->tail->time = bass_beats->tail->time;
+        }
+        if (detect_midrange(&magnitudes[0], midrange_beats, time, midrange_frame_average, midrange_running_average, midrange_variables) &&
+            midrange_beats->tail->time - bass_beats->tail->time < .09) {
+
+            midrange_beats->tail->time = bass_beats->tail->time;
+        }
         frame++;
     }
 
