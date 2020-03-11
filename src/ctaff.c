@@ -187,27 +187,27 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
     double increase = 1, maximum_average = 1;
     int increase_count = 0, maximum_index = 0;
 
-    for (int i = 10; i <= 89; i++) {
+    for (int i = 9; i <= 88; i++) {
         double magnitude = out[i];
-        double freq_increase = magnitude - midrange_variables->last_frequencies[i - 10];
-        double last_increase = midrange_variables->last_increases[i - 10];
+        double freq_increase = magnitude - midrange_variables->last_frequencies[i - 9];
+        double last_increase = midrange_variables->last_increases[i - 9];
         double max_increase = freq_increase > last_increase ? freq_increase : last_increase;
         if (max_increase > running_average * 2) {
             increase += max_increase;
             increase_count++;
         }
         double magnitude_average = (out[i + 1] + magnitude) / 2;
-        if (magnitude_average > maximum_average && i != 89) {
+        if (magnitude_average > maximum_average && i != 88) {
             maximum_average = magnitude_average;
             maximum_index = i;
         }
-        midrange_variables->last_frequencies[i - 10] = magnitude;
+        midrange_variables->last_frequencies[i - 9] = magnitude;
     }
 
     if (detect_midrange_beat(running_average, maximum_average, increase)) {
         if (!midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1]) {
-            char layer = 'C' + (maximum_index > 15 ? 2 : 0);
-            if (time - beats->tail->time <= .2 && beats->tail->layer != 'D')
+            char layer = 'C' + (maximum_index > 18 ? 2 : 0);
+            if (time - beats->tail->time <= .2 && beats->tail->layer == layer)
                 layer = 'D';
             add_beat(beats, time, layer);
             detected = true;
@@ -284,6 +284,7 @@ int main(int argc, char *argv[]) {
 
     BeatNode_t *bass_start = (BeatNode_t*) malloc(sizeof(BeatNode_t));
     bass_start->next = NULL;
+    bass_start->time = 0;
 
     BeatList_t *bass_beats = (BeatList_t*) malloc(sizeof(BeatList_t));
     bass_beats->head = bass_start;
@@ -300,6 +301,7 @@ int main(int argc, char *argv[]) {
 
     BeatNode_t *midrange_start = (BeatNode_t*) malloc(sizeof(BeatNode_t));
     midrange_start->next = NULL;
+    midrange_start->time = 0;
 
     BeatList_t *midrange_beats = (BeatList_t*) malloc(sizeof(BeatList_t));
     midrange_beats->head = midrange_start;
@@ -338,7 +340,7 @@ int main(int argc, char *argv[]) {
             magnitudes[i] = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
             if (i <= 8)
                 bass_frame_average += magnitudes[i];
-            else if (i >= 10 && i <= 89)
+            else if (i >= 9 && i <= 88)
                 midrange_frame_average += magnitudes[i];
 
         }
@@ -359,12 +361,12 @@ int main(int argc, char *argv[]) {
         float time = (frame + 0.5) * FRAME_SIZE / 44100.;
 
         if (detect_bass(&magnitudes[0], bass_beats, time, bass_frame_average, bass_running_average, bass_variables) && 
-            bass_beats->tail->time - midrange_beats->tail->time < .09) {
+            bass_beats->tail->time - midrange_beats->tail->time < .05) {
 
             midrange_beats->tail->time = bass_beats->tail->time;
         }
         if (detect_midrange(&magnitudes[0], midrange_beats, time, midrange_frame_average, midrange_running_average, midrange_variables) &&
-            midrange_beats->tail->time - bass_beats->tail->time < .09) {
+            midrange_beats->tail->time - bass_beats->tail->time < .05) {
 
             midrange_beats->tail->time = bass_beats->tail->time;
         }
