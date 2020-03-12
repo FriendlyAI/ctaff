@@ -149,10 +149,8 @@ bool detect_bass(double *out, BeatList_t *beats, float time, double average, dou
     }
     else if (!bass_variables->last_was_detected[0] && detect_bass_beat(running_average, average, maximum_average, increase, increase_count, average_increase_ratios, maximum_increase_ratios, bass_variables)) {
         if (!bass_variables->last_was_detected[1]) {
-            if (bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2) {
+            if (bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2)
                 time -= FRAME_TIME / 2;
-                maximum_index = bass_variables->last_maximum_index;
-            }
 
             char layer = 'A' + maximum_index / 5;
             if (time - beats->tail->time < .15 && beats->tail->layer == layer)
@@ -226,7 +224,7 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
             detected = true;
         }
         else if (midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1] && (increase > midrange_variables->last_total_increase || maximum_average > midrange_variables->last_maximum)) {
-            beats->tail->time = time;
+            beats->tail->time += FRAME_TIME / 2;
             detected = true;
         }
     }
