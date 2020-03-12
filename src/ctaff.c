@@ -35,7 +35,6 @@ typedef struct BassVariables {
 typedef struct MidrangeVariables {
     double last_maximum;
     double last_total_increase;
-    double last_increases[80];
     double last_frequencies[80];
 
     bool last_was_detected[2];
@@ -100,7 +99,15 @@ bool detect_midrange_beat(double running_average, double maximum_average, double
             return true;
         }
     }
-    else if (maximum_average > 45 && increase > 100) {
+    else if (running_average > 3) {
+        if (maximum_average > 45 && increase > 100)
+            return true;
+    }
+    else if (running_average > 1) {
+        if (maximum_average > 30 && increase > 75)
+            return true;
+    }
+    else if (maximum_average > 15 && increase > 50) {
         return true;
     }
     return false;
@@ -190,10 +197,8 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
     for (int i = 9; i <= 88; i++) {
         double magnitude = out[i];
         double freq_increase = magnitude - midrange_variables->last_frequencies[i - 9];
-        double last_increase = midrange_variables->last_increases[i - 9];
-        double max_increase = freq_increase > last_increase ? freq_increase : last_increase;
-        if (max_increase > running_average * 2) {
-            increase += max_increase;
+        if (freq_increase > running_average * 2) {
+            increase += freq_increase;
             increase_count++;
         }
         double magnitude_average = (out[i + 1] + magnitude) / 2;
@@ -206,9 +211,17 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
 
     if (detect_midrange_beat(running_average, maximum_average, increase)) {
         if (!midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1]) {
-            char layer = 'C' + (maximum_index > 18 ? 2 : 0);
-            if (time - beats->tail->time <= .2 && beats->tail->layer == layer)
+            char layer = 'C';
+            if (maximum_index > 30)
+                layer = 'E';
+            else if (maximum_index > 16)
                 layer = 'D';
+            if (time - beats->tail->time <= .2 && beats->tail->layer == layer) {
+                if (layer == 'D')
+                    layer = 'C' + (maximum_index > 24 ? 2 : 0);
+                else
+                    layer = 'D';
+            }
             add_beat(beats, time, layer);
             detected = true;
         }
@@ -217,7 +230,7 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
             detected = true;
         }
     }
-    
+
     midrange_variables->last_total_increase = increase;
     midrange_variables->last_maximum = maximum_average;
 
@@ -308,7 +321,6 @@ int main(int argc, char *argv[]) {
     midrange_beats->tail = midrange_start;
 
     MidrangeVariables_t *midrange_variables = (MidrangeVariables_t*) malloc(sizeof(MidrangeVariables_t));
-    memset(midrange_variables->last_increases, 1, sizeof(midrange_variables->last_increases));
     memset(midrange_variables->last_was_detected, false, sizeof(midrange_variables->last_was_detected));
     memset(midrange_variables->last_frequencies, 1, sizeof(midrange_variables->last_frequencies));
     midrange_variables->last_total_increase = 1;
@@ -336,14 +348,13 @@ int main(int argc, char *argv[]) {
         double midrange_frame_average = 1;
 
         for (int i = 1; i <= FRAME_SIZE / 2; i++) { // full spectrum
-        // for (int i = 1; i <= 9; i++) { // only frequencies needed for now
             magnitudes[i] = sqrt(out[i].r * out[i].r + out[i].i * out[i].i);
             if (i <= 8)
                 bass_frame_average += magnitudes[i];
             else if (i >= 9 && i <= 88)
                 midrange_frame_average += magnitudes[i];
-
         }
+
         bass_frame_average /= 8;
         midrange_frame_average /= 80;
 
