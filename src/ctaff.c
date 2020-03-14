@@ -445,10 +445,14 @@ int main(int argc, char *argv[]) {
         float time = (frame + 0.5) * FRAME_SIZE / 44100.;
 
         if (detect_bass(&magnitudes[0], bass_beats, time, bass_frame_average, bass_running_average, bass_variables)) {
-            if (bass_beats->tail->time - midrange_beats->tail->time < .05) 
+            if (bass_beats->tail->time - midrange_beats->tail->time < .05) {
                 midrange_beats->tail->time = bass_beats->tail->time;
-            if (high_frequency_beats->tail->time != 0 && bass_beats->tail->time - high_frequency_beats->tail->time < .05) 
+                midrange_variables->last_was_detected[0] = true;
+            }
+            if (high_frequency_beats->tail->time != 0 && bass_beats->tail->time - high_frequency_beats->tail->time < .05) {
                 high_frequency_beats->tail->time = bass_beats->tail->time;
+                high_frequency_variables->last_was_detected[0] = true;
+            }
         }
         if (detect_midrange(&magnitudes[0], midrange_beats, time, midrange_frame_average, midrange_running_average, midrange_variables)) {
             if (midrange_beats->tail->time - bass_beats->tail->time < .05)
@@ -458,10 +462,12 @@ int main(int argc, char *argv[]) {
         }
 
         if (detect_high_frequency(&magnitudes[0], high_frequency_beats, time, high_frequency_frame_average, high_frequency_running_average, high_frequency_variables)) {
-            if (high_frequency_beats->tail->time - bass_beats->tail->time < .075)
+            if (high_frequency_beats->tail->time - bass_beats->tail->time < .05)
                 high_frequency_beats->tail->time = bass_beats->tail->time;
-            if (high_frequency_beats->tail->time - midrange_beats->tail->time < .05)
+            if (high_frequency_beats->tail->time - midrange_beats->tail->time < .05) {
                 midrange_beats->tail->time = high_frequency_beats->tail->time;
+                midrange_variables->last_was_detected[0] = true;
+            }
         }
 
         frame++;

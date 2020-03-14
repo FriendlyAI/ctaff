@@ -22,4 +22,4 @@ Layers `A` and `B` are bass beats. `A` is for frequencies peaking around 0-100 H
 
 Layers `C`, `D`, and `E` are midrange beats. `C` is for frequencies peaking around 200-350 Hz, `D` is for frequencies peaking around 350-650 Hz, and `E` is for frequencies peaking around 350-2000 Hz.
 
-Layer `F` is for frequencies peaking around 2800-3850 Hz.
+Layer `F` is for high-frequency beats peaking around 2800-3850 Hz.
