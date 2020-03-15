@@ -12,7 +12,6 @@
 
 typedef struct BeatNode {
     struct BeatNode *next;
-    // struct BeatNode *prev;
     float time;
     char layer;
 } BeatNode_t;
@@ -45,7 +44,7 @@ typedef struct HighFrequencyVariables {
     double last_total_increase;
     double last_frequencies[50];
 
-    bool last_was_detected[2];
+    bool last_was_detected[3];
 } HighFrequencyVariables_t;
 
 const char kPathSeparator[2] =
@@ -111,11 +110,19 @@ bool detect_midrange_beat(double running_average, double maximum_average, double
         if (maximum_average > 45 && increase > 100)
             return true;
     }
-    else if (running_average > 1) {
+    else if (running_average > 2) {
         if (maximum_average > 30 && increase > 75)
             return true;
     }
-    else if (maximum_average > 15 && increase > 50) {
+    else if (running_average > 1) {
+        if (maximum_average > 20 && increase > 50)
+            return true;
+    }
+    else if (running_average > .5) {
+        if (maximum_average > 15 && increase > 40)
+            return true;
+    }
+    else if (maximum_average > 10 && increase > 30) {
         return true;
     }
     return false;
@@ -271,7 +278,7 @@ bool detect_high_frequency(double *out, BeatList_t *beats, float time, double av
     }
 
     if (detect_high_frequency_beat(running_average, average, increase)) {
-        if (!high_frequency_variables->last_was_detected[0] && !high_frequency_variables->last_was_detected[1]) {
+        if (!high_frequency_variables->last_was_detected[0] && !high_frequency_variables->last_was_detected[1] && !high_frequency_variables->last_was_detected[2]) {
             add_beat(beats, time, 'F');
             detected = true;
         }
@@ -284,6 +291,7 @@ bool detect_high_frequency(double *out, BeatList_t *beats, float time, double av
     high_frequency_variables->last_average = average;
     high_frequency_variables->last_total_increase = increase;
 
+    high_frequency_variables->last_was_detected[2] = high_frequency_variables->last_was_detected[1];
     high_frequency_variables->last_was_detected[1] = high_frequency_variables->last_was_detected[0];
     high_frequency_variables->last_was_detected[0] = detected;
 
@@ -306,7 +314,7 @@ int main(int argc, char *argv[]) {
                     {
                         int buffer_size = 55+251; // 55 chars for command + 251 chars for filepath
 
-                        char command_buffer[buffer_size]; 
+                        char command_buffer[buffer_size];
                         int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel error -ac 1 -f f32le -ar 44100 -", optarg);
                         if (make_command < 0 || make_command >= buffer_size) {
                             printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.\n");
@@ -469,6 +477,13 @@ int main(int argc, char *argv[]) {
                 midrange_variables->last_was_detected[0] = true;
             }
         }
+
+        // if (time >= 0 && time <= 0) {
+        //     printf("*************************** %f ***************************\n", time);
+        //     printf("%f | %f | %f\n", bass_variables->last_maximums[0], bass_variables->last_averages[0], bass_variables->last_total_increases[0]);
+        //     printf("%f | %f | %f\n", midrange_variables->last_maximum, midrange_variables->last_total_increase, midrange_running_average);
+        //     printf("%f | %f\n", high_frequency_variables->last_average, high_frequency_variables->last_total_increase);
+        // }
 
         frame++;
     }
