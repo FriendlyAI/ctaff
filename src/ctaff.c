@@ -261,11 +261,7 @@ bool detect_high_frequency(double *out, BeatList_t *beats, float time, double av
 }
 
 int main(int argc, char *argv[]) {
-    system("mkdir -p tmp");
-    char output_filepath[14] = "tmp";
-    strcat(strcat(output_filepath, kPathSeparator), "out.map");
-    FILE *output_ptr = fopen(output_filepath, "w+");
-
+    FILE *output_ptr = NULL;
     FILE *song_file_ptr = NULL;
 
     if (argc > 1) {
@@ -287,10 +283,8 @@ int main(int argc, char *argv[]) {
                     break;
                 case 'o':
                     output_ptr = fopen(optarg, "w+");
-                    if (output_ptr == NULL) {
-                        printf("Error: output file can't be opened. Defaulting to tmp/out.map\n");
-                        output_ptr = fopen(output_filepath, "w+");
-                    }
+                    if (output_ptr == NULL)
+                        printf("Error: can't open output file.\n");
                     break;
             }
         }
@@ -298,6 +292,14 @@ int main(int argc, char *argv[]) {
     else {
         printf("Error: no input file specified.\n");
         return 1;
+    }
+    
+    if (output_ptr == NULL) {
+        printf("Defaulting output to tmp/out.map\n");
+        system("mkdir -p tmp");
+        char output_filepath[14] = "tmp";
+        strcat(strcat(output_filepath, kPathSeparator), "out.map");
+        output_ptr = fopen(output_filepath, "w+");
     }
 
     // ensure decoding created output
