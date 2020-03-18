@@ -64,75 +64,38 @@ void add_beat(BeatList_t *beats, float time, char layer) {
 }
 
 bool detect_bass_beat(double running_average, double average, double maximum, double increase, int increase_count, double average_increase_ratios[2], double maximum_increase_ratios[2], BassVariables_t *bass_variables) {
-    if (running_average >= 100) {
-        if (((average > 70 && increase > 350) || average > 80) && maximum > 155 && increase > 250 && increase / bass_variables->last_maximums[0] > 1.4 && increase > bass_variables->last_total_increases[0] * .6)
-            return true;
-    }
-    else if (running_average >= 80) {
-        if (((average > 65 && increase > 350) || average > 75) && maximum > 145 && increase > 225 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
-            return true;
-    }
-    else if (running_average >= 60) {
-        if (((average > 60 && increase > 350) || average > 70) && maximum > 130 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
-            return true;
-    }
-    else if (running_average >= 50) {
-        if (((average > 50 && increase > 300) || average > 65) && maximum > 120 && increase > 200 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .7)
-            return true;
-    }
-    else if (running_average >= 40) {
-        if (((average > 45 && increase > 250) || average > 60) && maximum > 100 && increase > 150 && increase / bass_variables->last_maximums[0] > 1.5 && increase > bass_variables->last_total_increases[0] * .8)
-            return true;
-    }
-    else {
-        if (((average > 40 && increase > 200) || average > 50) && maximum > 75 && increase > 100 && increase / bass_variables->last_maximums[0] > 1.6 && increase > bass_variables->last_total_increases[0] * .9)
-            return true;
-    }
+    double average_requirement = 0.3 * running_average + 45;
+    double increase_requirement = 1.2 * running_average + 115;
+    double lenient_average_requirement = 0.4 * running_average + 25;
+    double strict_increase_requirement = 1.5 * running_average + 215;
+    double maximum_requirement = 0.8 * running_average + 65;
+    double last_maximum_increase_requirement = -0.0025 * running_average + 1.45;
+    double last_total_increase_requirement = -0.0025 * running_average + 0.825;
 
-    return false;
+    return (average > 40 && increase > 100 &&
+            ((average > average_requirement && increase > increase_requirement) || 
+             (average > lenient_average_requirement && increase > strict_increase_requirement)) && 
+            maximum > maximum_requirement &&
+            increase / bass_variables->last_maximums[0] > last_maximum_increase_requirement &&
+            increase > bass_variables->last_total_increases[0] * last_total_increase_requirement);
 }
 
-bool detect_midrange_beat(double running_average, double maximum_average, double increase) {
-    if (running_average > 15) {
-        if (maximum_average > 75 && increase > 275)
-            return true;
-    }
-    else if (running_average > 10) {
-        if (maximum_average > 65 && increase > 225)
-            return true;
-    }
-    else if (running_average > 5) {
-        if (maximum_average > 55 && increase > 150) {
-            return true;
-        }
-    }
-    else if (running_average > 3) {
-        if (maximum_average > 45 && increase > 100)
-            return true;
-    }
-    else if (running_average > 2) {
-        if (maximum_average > 30 && increase > 75)
-            return true;
-    }
-    else if (running_average > 1) {
-        if (maximum_average > 20 && increase > 50)
-            return true;
-    }
-    else if (running_average > .5) {
-        if (maximum_average > 15 && increase > 40)
-            return true;
-    }
-    else if (maximum_average > 10 && increase > 30) {
-        return true;
-    }
-    return false;
+bool detect_midrange_beat(double running_average, double maximum, double increase) {
+
+    double maximum_requirement = 18 * log(running_average) + 20;
+    double increase_requirement = 16 * running_average + 33;
+    double lenient_maximum_requirement = 15 * log(running_average) + 20;
+    double strict_increase_requirement = 18 * running_average + 58;
+
+    return (maximum > 10 && increase > 30 && 
+            ((maximum > maximum_requirement && increase > increase_requirement) || 
+             (maximum > lenient_maximum_requirement && increase > strict_increase_requirement)));
 }
 
 bool detect_high_frequency_beat(double running_average, double average, double increase) {
-    if (increase > 75 && average > 1.5 * running_average) {
-        return true;
-    }
-    return false;
+    double average_increase_requirement = -0.004 * increase + 1.7;
+
+    return (increase > 50 && average > average_increase_requirement * running_average);
 }
 
 bool detect_bass(double *out, BeatList_t *beats, float time, double average, double running_average, BassVariables_t *bass_variables) {
@@ -301,7 +264,7 @@ bool detect_high_frequency(double *out, BeatList_t *beats, float time, double av
 int main(int argc, char *argv[]) {
     system("mkdir -p tmp");
     char output_filepath[14] = "tmp";
-    strcat(strcat(output_filepath, kPathSeparator), "out.track");
+    strcat(strcat(output_filepath, kPathSeparator), "out.map");
     FILE *output_ptr = fopen(output_filepath, "w+");
 
     FILE *song_file_ptr = NULL;
@@ -326,7 +289,7 @@ int main(int argc, char *argv[]) {
                 case 'o':
                     output_ptr = fopen(optarg, "w+");
                     if (output_ptr == NULL) {
-                        printf("Error: output file can't be opened. Defaulting to tmp/out.track\n");
+                        printf("Error: output file can't be opened. Defaulting to tmp/out.map\n");
                         output_ptr = fopen(output_filepath, "w+");
                     }
                     break;
