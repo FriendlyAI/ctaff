@@ -86,7 +86,7 @@ bool detect_midrange_beat(double running_average, double maximum_average, double
     double lenient_maximum_requirement = 20 * log(running_average + .4) + 10;
     double strict_increase_requirement = 35 * sqrt(running_average) + 30;
 
-    return (maximum_average > 20 && increase > 40 && increase > last_total_increase * .8 && 
+    return (maximum_average > 15 && increase > 40 && increase > last_total_increase * .8 && 
             ((maximum_average > maximum_requirement && increase > increase_requirement) || 
              (maximum_average > lenient_maximum_requirement && increase > strict_increase_requirement)));
 }
