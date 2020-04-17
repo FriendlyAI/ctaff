@@ -20,6 +20,6 @@ Output is a binary file of beats detected. There are no headers and each beat is
 
 Layers `A` and `B` are bass beats. `A` is for frequencies peaking around 0-100 Hz, while `B` is for beats peaking around 100-200 Hz.
 
-Layers `C`, `D`, and `E` are midrange beats. `C` is for frequencies peaking around 200-350 Hz, `D` is for frequencies peaking around 350-650 Hz, and `E` is for frequencies peaking around 350-2000 Hz.
+Layers `C`, `D`, and `E` are midrange beats. `C` is for frequencies peaking around 200-350 Hz, `D` is for frequencies peaking around 350-650 Hz, and `E` is for frequencies peaking around 650-2000 Hz.
 
 Layer `F` is for high-frequency beats peaking around 2800-4400 Hz.

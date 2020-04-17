@@ -270,12 +270,12 @@ int main(int argc, char *argv[]) {
             switch (opt) {
                 case 'i':
                     {
-                        int buffer_size = 55+251; // 55 chars for command + 251 chars for filepath
+                        int buffer_size = 55+351; // 55 chars for command + 251 chars for filepath
 
                         char command_buffer[buffer_size];
                         int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel error -ac 1 -f f32le -ar 44100 -", optarg);
                         if (make_command < 0 || make_command >= buffer_size) {
-                            printf("Error: Can't decode filename. Ensure the file path is at most 250 characters long.\n");
+                            printf("Error: Can't decode filename. Ensure the file path is at most 350 characters long.\n");
                             return 1;
                         }
                         song_file_ptr = popen(command_buffer, "r");
@@ -366,8 +366,8 @@ int main(int argc, char *argv[]) {
     double magnitudes[FRAME_SIZE / 2];
 
     double bass_running_average = 30;
-    double midrange_running_average = 1;
-    double high_frequency_running_average = 1;
+    double midrange_running_average = 0;
+    double high_frequency_running_average = 0;
     while (1) {
         for (int i = 0; i < FRAME_SIZE; i++) {
             // hanning window weight
