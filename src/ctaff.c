@@ -63,32 +63,26 @@ void add_beat(BeatList_t *beats, float time, char layer) {
     beats->tail = new_node;
 }
 
-bool detect_bass_beat(double running_average, double average, double maximum_average, double increase, int increase_count, double average_increase_ratios[2], double maximum_increase_ratios[2], BassVariables_t *bass_variables) {
+bool detect_bass_beat(double running_average, double average, double maximum_average, double increase, double average_increase_ratios[2], double maximum_increase_ratios[2], BassVariables_t *bass_variables) {
     double average_requirement = 0.3 * running_average + 45;
     double increase_requirement = 1.2 * running_average + 115;
-    double lenient_average_requirement = 0.4 * running_average + 25;
-    double strict_increase_requirement = 1.5 * running_average + 215;
     double maximum_requirement = 0.8 * running_average + 65;
     double last_maximum_increase_requirement = -0.0025 * running_average + 1.45;
     double last_total_increase_requirement = -0.0025 * running_average + 0.825;
 
-    return (average > 40 && increase > 100 &&
-            ((average > average_requirement && increase > increase_requirement) || 
-             (average > lenient_average_requirement && increase > strict_increase_requirement)) && 
-            maximum_average > maximum_requirement &&
-            increase / bass_variables->last_maximums[0] > last_maximum_increase_requirement &&
-            increase > bass_variables->last_total_increases[0] * last_total_increase_requirement);
+    return average > 40 && average > average_requirement - 0.1 * increase && 
+           increase > 100  && increase > increase_requirement && 
+           maximum_average > maximum_requirement &&
+           increase / bass_variables->last_maximums[0] > last_maximum_increase_requirement &&
+           increase > bass_variables->last_total_increases[0] * last_total_increase_requirement;
 }
 
 bool detect_midrange_beat(double running_average, double maximum_average, double increase, double last_total_increase) {
     double maximum_requirement = 20 * log(running_average + .4) + 15;
     double increase_requirement = 30 * sqrt(running_average) + 20;
-    double lenient_maximum_requirement = 20 * log(running_average + .4) + 10;
-    double strict_increase_requirement = 35 * sqrt(running_average) + 30;
 
-    return (maximum_average > 15 && increase > 40 && increase > last_total_increase * .8 && 
-            ((maximum_average > maximum_requirement && increase > increase_requirement) || 
-             (maximum_average > lenient_maximum_requirement && increase > strict_increase_requirement)));
+    return maximum_average > 15 && maximum_average > maximum_requirement - increase * .1 && 
+           increase > 40 && increase > last_total_increase * .8 && increase > increase_requirement;
 }
 
 bool detect_high_frequency_beat(double running_average, double average, double increase, double last_total_increase) {
@@ -100,7 +94,7 @@ bool detect_high_frequency_beat(double running_average, double average, double i
 bool detect_bass(double *out, BeatList_t *beats, float time, double average, double running_average, BassVariables_t *bass_variables) {
     bool detected = false;
     double increase = 1, maximum_average = 1;
-    int increase_count = 0, maximum_index = 0;
+    int maximum_index = 0;
 
     for (int i = 1; i <= 8; i++) {
         double magnitude = out[i];
@@ -109,7 +103,6 @@ bool detect_bass(double *out, BeatList_t *beats, float time, double average, dou
         double max_increase = freq_increase > last_increase ? freq_increase : last_increase;
         if (max_increase > 30 + running_average / 2) { // can raise to reduce false positives
             increase += max_increase;
-            increase_count++;
         }
         double magnitude_average = (out[i + 1] + magnitude) / 2;
         if (magnitude_average > maximum_average && i != 8) {
@@ -132,7 +125,7 @@ bool detect_bass(double *out, BeatList_t *beats, float time, double average, dou
         detected = true;
     }
 
-    else if (!bass_variables->last_was_detected[0] && detect_bass_beat(running_average, average, maximum_average, increase, increase_count, average_increase_ratios, maximum_increase_ratios, bass_variables)) {
+    else if (!bass_variables->last_was_detected[0] && detect_bass_beat(running_average, average, maximum_average, increase, average_increase_ratios, maximum_increase_ratios, bass_variables)) {
         if (!bass_variables->last_was_detected[1]) {
             if (bass_variables->last_maximum_index > maximum_index && bass_variables->last_maximums[0] > running_average / 2)
                 time -= FRAME_TIME / 2;
@@ -175,14 +168,13 @@ bool detect_bass(double *out, BeatList_t *beats, float time, double average, dou
 bool detect_midrange(double *out, BeatList_t *beats, float time, double average, double running_average, MidrangeVariables_t *midrange_variables) {
     bool detected = false;
     double increase = 1, maximum_average = 1;
-    int increase_count = 0, maximum_index = 0;
+    int maximum_index = 0;
 
     for (int i = 9; i <= 88; i++) {
         double magnitude = out[i];
         double freq_increase = magnitude - midrange_variables->last_frequencies[i - 9];
         if (freq_increase > 5 + running_average * 2) {
             increase += freq_increase;
-            increase_count++;
         }
         double magnitude_average = (out[i + 1] + magnitude) / 2;
         if (magnitude_average > maximum_average && i != 88) {
@@ -227,14 +219,12 @@ bool detect_high_frequency(double *out, BeatList_t *beats, float time, double av
     bool detected = false;
 
     double increase = 1;
-    int increase_count = 0;
 
     for (int i = 130; i <= 204; i++) {
         double magnitude = out[i];
         double freq_increase = magnitude - high_frequency_variables->last_frequencies[i - 130];
         if (freq_increase > running_average * 2) {
             increase += freq_increase;
-            increase_count++;
         }
         high_frequency_variables->last_frequencies[i - 130] = magnitude;
     }
@@ -440,7 +430,7 @@ int main(int argc, char *argv[]) {
         if (detect_high_frequency(&magnitudes[0], high_frequency_beats, time, high_frequency_frame_average, high_frequency_running_average, high_frequency_variables)) {
             if (fabsf(high_frequency_beats->tail->time - bass_beats->tail->time) < .05)
                 high_frequency_beats->tail->time = bass_beats->tail->time;
-            if (fabsf(high_frequency_beats->tail->time - midrange_beats->tail->time) < .05) {
+            else if (fabsf(high_frequency_beats->tail->time - midrange_beats->tail->time) < .05) {
                 float average_time = (high_frequency_beats->tail->time + midrange_beats->tail->time) / 2;
                 midrange_beats->tail->time = average_time;
                 high_frequency_beats->tail->time = average_time;
