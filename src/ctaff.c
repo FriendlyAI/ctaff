@@ -70,7 +70,7 @@ bool detect_bass_beat(double running_average, double average, double maximum_ave
     double last_maximum_increase_requirement = -0.0025 * running_average + 1.45;
     double last_total_increase_requirement = -0.0025 * running_average + 0.825;
 
-    return average > 40 && average > average_requirement - 0.1 * increase && 
+    return average > 40 && average > average_requirement * (1 - pow(increase / 1000., 2)) && 
            increase > 100  && increase > increase_requirement && 
            maximum_average > maximum_requirement &&
            increase / bass_variables->last_maximums[0] > last_maximum_increase_requirement &&
@@ -79,9 +79,9 @@ bool detect_bass_beat(double running_average, double average, double maximum_ave
 
 bool detect_midrange_beat(double running_average, double maximum_average, double increase, double last_total_increase) {
     double maximum_requirement = 20 * log(running_average + .4) + 15;
-    double increase_requirement = 30 * sqrt(running_average) + 20;
+    double increase_requirement = 7 * running_average + 20;
 
-    return maximum_average > 15 && maximum_average > maximum_requirement - increase * .1 && 
+    return maximum_average > 15 && maximum_average > maximum_requirement * (1 - pow(increase / 2000., 2)) && 
            increase > 40 && increase > last_total_increase * .8 && increase > increase_requirement;
 }
 
