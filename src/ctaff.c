@@ -33,7 +33,7 @@ typedef struct BassVariables {
 
 typedef struct MidrangeVariables {
     double last_maximum;
-    double last_total_increase;
+    double last_total_increases[2];
     double last_frequencies[80];
 
     bool last_was_detected[2];
@@ -41,7 +41,7 @@ typedef struct MidrangeVariables {
 
 typedef struct HighFrequencyVariables {
     double last_average;
-    double last_total_increase;
+    double last_total_increases[2];
     double last_frequencies[75];
 
     bool last_was_detected[3];
@@ -77,18 +77,18 @@ bool detect_bass_beat(double running_average, double average, double maximum_ave
            increase > bass_variables->last_total_increases[0] * last_total_increase_requirement;
 }
 
-bool detect_midrange_beat(double running_average, double maximum_average, double increase, double last_total_increase) {
+bool detect_midrange_beat(double running_average, double maximum_average, double increase, double last_total_increases[2]) {
     double maximum_requirement = 20 * log(running_average + .4) + 15;
     double increase_requirement = 7 * running_average + 20;
 
     return maximum_average > 15 && maximum_average > maximum_requirement * (1 - pow(increase / 2000., 2)) && 
-           increase > 40 && increase > last_total_increase * .8 && increase > increase_requirement;
+           increase > 40 && increase > increase_requirement && increase > (last_total_increases[0] + last_total_increases[1]) * .4;
 }
 
-bool detect_high_frequency_beat(double running_average, double average, double increase, double last_total_increase) {
+bool detect_high_frequency_beat(double running_average, double average, double increase, double last_total_increases[2]) {
     double average_increase_requirement = -0.003 * increase + 1.9;
 
-    return increase > 100 && average > average_increase_requirement * running_average && increase > last_total_increase * .8;
+    return increase > 100 && average > average_increase_requirement * running_average && increase > (last_total_increases[0] + last_total_increases[1]) * .4;
 }
 
 bool detect_bass(double *out, BeatList_t *beats, float time, double average, double running_average, BassVariables_t *bass_variables) {
@@ -184,7 +184,7 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
         midrange_variables->last_frequencies[i - 9] = magnitude;
     }
 
-    if (detect_midrange_beat(running_average, maximum_average, increase, midrange_variables->last_total_increase)) {
+    if (detect_midrange_beat(running_average, maximum_average, increase, midrange_variables->last_total_increases)) {
         if (!midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1]) {
             char layer = 'C';
             if (maximum_index > 30)
@@ -200,14 +200,15 @@ bool detect_midrange(double *out, BeatList_t *beats, float time, double average,
             add_beat(beats, time, layer);
             detected = true;
         }
-        else if (midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1] && (increase > midrange_variables->last_total_increase || maximum_average > midrange_variables->last_maximum)) {
+        else if (midrange_variables->last_was_detected[0] && !midrange_variables->last_was_detected[1] && (increase > midrange_variables->last_total_increases[0] || maximum_average > midrange_variables->last_maximum)) {
             beats->tail->time += FRAME_TIME / 2;
             detected = true;
         }
     }
 
     midrange_variables->last_maximum = maximum_average;
-    midrange_variables->last_total_increase = increase;
+    midrange_variables->last_total_increases[1] = midrange_variables->last_total_increases[0];
+    midrange_variables->last_total_increases[0] = increase;
 
     midrange_variables->last_was_detected[1] = midrange_variables->last_was_detected[0];
     midrange_variables->last_was_detected[0] = detected;
@@ -229,19 +230,20 @@ bool detect_high_frequency(double *out, BeatList_t *beats, float time, double av
         high_frequency_variables->last_frequencies[i - 130] = magnitude;
     }
 
-    if (detect_high_frequency_beat(running_average, average, increase, high_frequency_variables->last_total_increase)) {
+    if (detect_high_frequency_beat(running_average, average, increase, high_frequency_variables->last_total_increases)) {
         if (!high_frequency_variables->last_was_detected[0] && !high_frequency_variables->last_was_detected[1] && !high_frequency_variables->last_was_detected[2]) {
             add_beat(beats, time, 'F');
             detected = true;
         }
-        else if (high_frequency_variables->last_was_detected[0] && !high_frequency_variables->last_was_detected[1] && increase > 150 && (increase > high_frequency_variables->last_total_increase || average > high_frequency_variables->last_average)) {
+        else if (high_frequency_variables->last_was_detected[0] && !high_frequency_variables->last_was_detected[1] && increase > 150 && (increase > high_frequency_variables->last_total_increases[0] || average > high_frequency_variables->last_average)) {
             beats->tail->time += FRAME_TIME / 2;
             detected = true;
         }
     }
 
     high_frequency_variables->last_average = average;
-    high_frequency_variables->last_total_increase = increase;
+    high_frequency_variables->last_total_increases[1] = high_frequency_variables->last_total_increases[0];
+    high_frequency_variables->last_total_increases[0] = increase;
 
     high_frequency_variables->last_was_detected[2] = high_frequency_variables->last_was_detected[1];
     high_frequency_variables->last_was_detected[1] = high_frequency_variables->last_was_detected[0];
@@ -335,8 +337,8 @@ int main(int argc, char *argv[]) {
     MidrangeVariables_t *midrange_variables = (MidrangeVariables_t*) malloc(sizeof(MidrangeVariables_t));
     memset(midrange_variables->last_was_detected, false, sizeof(midrange_variables->last_was_detected));
     memset(midrange_variables->last_frequencies, 1, sizeof(midrange_variables->last_frequencies));
+    memset(midrange_variables->last_total_increases, 1, sizeof(midrange_variables->last_total_increases));
     midrange_variables->last_maximum = 1;
-    midrange_variables->last_total_increase = 1;
 
     BeatNode_t *high_frequency_start = (BeatNode_t*) malloc(sizeof(BeatNode_t));
     high_frequency_start->next = NULL;
@@ -349,8 +351,8 @@ int main(int argc, char *argv[]) {
     HighFrequencyVariables_t *high_frequency_variables = (HighFrequencyVariables_t*) malloc(sizeof(HighFrequencyVariables_t));
     memset(high_frequency_variables->last_was_detected, false, sizeof(high_frequency_variables->last_was_detected));
     memset(high_frequency_variables->last_frequencies, 1, sizeof(high_frequency_variables->last_frequencies));
+    memset(high_frequency_variables->last_total_increases, 1, sizeof(high_frequency_variables->last_total_increases));
     high_frequency_variables->last_average = 1;
-    high_frequency_variables->last_total_increase = 1;
 
     int frame = 0;
     double magnitudes[FRAME_SIZE / 2];
