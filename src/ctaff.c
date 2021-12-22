@@ -256,13 +256,13 @@ int main(int argc, char *argv[]) {
     FILE *output_ptr = NULL;
     FILE *song_file_ptr = NULL;
 
-    if (argc > 1) {
+    if (argc > 2) {
         int opt;
         while ((opt = getopt(argc, argv, "i:o:")) != -1) {
             switch (opt) {
                 case 'i':
                     {
-                        int buffer_size = 55+351; // 55 chars for command + 251 chars for filepath
+                        int buffer_size = 54+351; // 54 chars for command + 351 chars for filepath
 
                         char command_buffer[buffer_size];
                         int make_command = snprintf(command_buffer, buffer_size, "ffmpeg -i \"%s\" -loglevel error -ac 1 -f f32le -ar 44100 -", optarg);
@@ -303,8 +303,6 @@ int main(int argc, char *argv[]) {
     else
         ungetc(c, song_file_ptr);
     
-    float sample;
-
     kiss_fft_scalar in[FRAME_SIZE];
     kiss_fft_cpx out[FRAME_SIZE];
     kiss_fftr_cfg fwd = kiss_fftr_alloc(FRAME_SIZE, 0, NULL, NULL);
@@ -360,6 +358,9 @@ int main(int argc, char *argv[]) {
     double bass_running_average = 30;
     double midrange_running_average = 0;
     double high_frequency_running_average = 0;
+
+    float sample;
+
     while (1) {
         for (int i = 0; i < FRAME_SIZE; i++) {
             // hanning window weight
