@@ -56,6 +56,7 @@ const char kPathSeparator[2] =
 
 void add_beat(BeatList_t *beats, float time, char layer) {
     BeatNode_t *new_node = (BeatNode_t*) malloc(sizeof(BeatNode_t));
+    new_node->next = NULL;
     new_node->time = time;
     new_node->layer = layer;
     
@@ -470,12 +471,21 @@ int main(int argc, char *argv[]) {
 
     // Free memory
 
-    for (BeatNode_t *current_node = bass_beats->head; current_node != NULL; current_node = current_node->next)
-        free(current_node);
-    for (BeatNode_t *current_node = midrange_beats->head; current_node != NULL; current_node = current_node->next)
-        free(current_node);
-    for (BeatNode_t *current_node = high_frequency_beats->head; current_node != NULL; current_node = current_node->next)
-        free(current_node);
+    for (BeatNode_t *current_node = bass_beats->head; current_node != NULL;) {
+        BeatNode_t *node_to_free = current_node;
+        current_node = current_node->next;
+        free(node_to_free);
+    }
+    for (BeatNode_t *current_node = midrange_beats->head; current_node != NULL;) {
+        BeatNode_t *node_to_free = current_node;
+        current_node = current_node->next;
+        free(node_to_free);
+    }
+    for (BeatNode_t *current_node = high_frequency_beats->head; current_node != NULL;) {
+        BeatNode_t *node_to_free = current_node;
+        current_node = current_node->next;
+        free(node_to_free);
+    }
 
     free(bass_beats);
     free(midrange_beats);

@@ -1,5 +1,6 @@
 CC = clang
 CFLAGS = -O2 -Wall
+# CFLAGS = -O2 -Wall -fsanitize=address -fsanitize=undefined
 
 OBJDIR = obj
 OFILES = ${OBJDIR}/ctaff.o ${OBJDIR}/kiss_fft.o ${OBJDIR}/kiss_fftr.o
